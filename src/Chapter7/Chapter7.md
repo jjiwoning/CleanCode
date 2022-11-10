@@ -207,3 +207,82 @@ LocalPort 클래스로 ACMEPort 클래스가 던지는 예외를 잡아 변환�
 → 라이브러리를 바꿔도 비용이 적다. 테스트 코드를 작성하기 쉬워진다.
 
 흔히 예외 클래스가 하나만 있어도 충분한 코드가 많다. → 한 예외는 잡아내고 다른 예외는 무시해도 괜찮은 경우라면 여러 예외 클래스를 사용한다.
+
+---
+
+## 정상 흐름을 정의하라
+
+위의 방식을 잘 따른다면 비즈니스 로직과 오류 처리가 잘 분리된 코드가 나온다.
+
+하지만 이러한 방식이 적합하지 않은 경우가 있다. (예외를 던져 중단시키기 때문)
+
+이럴 때는 특수 사례 패턴(Special Case Pattern)을 사용하면 된다.
+
+아래의 코드 예시를 보자
+
+```java
+try {
+    MealExpenses expenses = expenseReportDAO.getMeals(employee.getID());
+    m_total += expenses.getTotal();
+  } catch(MealExpensesNotFound e) {
+    m_total += getMealPerDiem();
+  }
+```
+
+이러한 방식보다는 특수한 상황을 처리하는 특수 사례 패턴을 적용하는 것이 좋다.
+
+```java
+public class PerDiemMealExpenses implements MealExpenses {
+    public int getTotal() {
+        // 기본값으로 일일 기본 식비를 반환한다.
+    }
+}
+```
+
+클래스를 만들거나 객체를 조작하는 방법으로 특수 사례를 처리하여 클라이언트 코드가 예외적인 상황을 처리하지 않아도 되는 장점이 있다.
+
+→ 클래스나 객체가 예외적인 상황을 캡슐화해서 처리한다.
+
+---
+
+## null을 반환하지 마라
+
+null을 반환하는 행위는 오류를 유발한다. 아래의 코드를 보자
+
+```java
+public void registerItem(Item item) {
+     if (item != null) {
+         ItemRegistry registry = peristentStore.getItemRegistry();
+         if (registry != null) {
+             Item existing = registry.getItem(item.getID());
+             if (existing.getBillingPeriod().hasRetailOwner()) {
+                 existing.register(item);
+             }
+         }
+     }
+ }
+```
+
+이 코드는 나쁜 코드이다. → null을 반환하는 코드는 일거리를 늘릴 뿐만 아니라 호출자에게 문제를 떠넘긴다.
+
+그리고 null을 확인해야 되는 게 너무 많다.
+
+만약 null을 반환해야 되는 경우라면, **null을 반환하기 보다는 예외를 던지거나 특수 사례 객체를 반환하는 방법을 권장한다.**
+
+---
+
+## null을 전달하지 마라
+
+메서드에 null을 전달하는 방식은 null을 반환하는 코드보다 더 나쁘다.
+
+정상적인 인수로 null을 기대하는 API가 아니라면 메서드로 null을 전달하는 코드는 최대한 피한다!!
+
+null 인수를 적절하게 처리하는 마땅한 방법도 존재하지 않는다.
+
+**애초에 null을 넘기지 못하도록 금지하는 정책이 더 합리적이다.**
+
+---
+
+## 결론
+
+오류 처리를 프로그램 로직과 분리해 독자적인 사안으로 고려하면 깨끗하고 안정적인 코드를 작성할 수 있다.
