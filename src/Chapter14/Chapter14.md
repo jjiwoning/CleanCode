@@ -129,3 +129,160 @@ public class Args {
   } 
 }
 ```
+
+코드가 위에서 아래로 읽힌다. → 좋은 코드
+
+코드에서 `ArgumentMarshaler`의 정의와 파생 클래스가 빠져있는데 이는 아래의 코드와 같다.
+
+```java
+public interface ArgumentMarshaler {
+  void set(Iterator<String> currentArgument) throws ArgsException;
+}
+```
+
+```java
+public class BooleanArgumentMarshaler implements ArgumentMarshaler { 
+  private boolean booleanValue = false;
+  
+  public void set(Iterator<String> currentArgument) throws ArgsException { 
+    booleanValue = true;
+  }
+  
+  public static boolean getValue(ArgumentMarshaler am) {
+    if (am != null && am instanceof BooleanArgumentMarshaler)
+      return ((BooleanArgumentMarshaler) am).booleanValue; 
+    else
+      return false; 
+  }
+}
+```
+
+```java
+public class StringArgumentMarshaler implements ArgumentMarshaler { 
+  private String stringValue = "";
+  
+  public void set(Iterator<String> currentArgument) throws ArgsException { 
+    try {
+      stringValue = currentArgument.next(); 
+    } catch (NoSuchElementException e) {
+      throw new ArgsException(MISSING_STRING); 
+    }
+  }
+  
+  public static String getValue(ArgumentMarshaler am) {
+    if (am != null && am instanceof StringArgumentMarshaler)
+      return ((StringArgumentMarshaler) am).stringValue; 
+    else
+      return ""; 
+  }
+}
+```
+
+```java
+public class IntegerArgumentMarshaler implements ArgumentMarshaler { 
+  private int intValue = 0;
+  
+  public void set(Iterator<String> currentArgument) throws ArgsException { 
+    String parameter = null;
+    try {
+      parameter = currentArgument.next();
+      intValue = Integer.parseInt(parameter);
+    } catch (NoSuchElementException e) {
+      throw new ArgsException(MISSING_INTEGER);
+    } catch (NumberFormatException e) {
+      throw new ArgsException(INVALID_INTEGER, parameter); 
+    }
+  }
+  
+  public static int getValue(ArgumentMarshaler am) {
+    if (am != null && am instanceof IntegerArgumentMarshaler)
+      return ((IntegerArgumentMarshaler) am).intValue; 
+    else
+    return 0; 
+  }
+}
+```
+
+오류 코드 상수를 정의하는 부분이 눈에 거슬린다. 아래의 ArgsException 코드를 살펴보자.
+
+```java
+public class ArgsException extends Exception { 
+  private char errorArgumentId = '\0'; 
+  private String errorParameter = null; 
+  private ErrorCode errorCode = OK;
+  
+  public ArgsException() {}
+  
+  public ArgsException(String message) {super(message);}
+  
+  public ArgsException(ErrorCode errorCode) { 
+    this.errorCode = errorCode;
+  }
+  
+  public ArgsException(ErrorCode errorCode, String errorParameter) { 
+    this.errorCode = errorCode;
+    this.errorParameter = errorParameter;
+  }
+  
+  public ArgsException(ErrorCode errorCode, char errorArgumentId, String errorParameter) {
+    this.errorCode = errorCode; 
+    this.errorParameter = errorParameter; 
+    this.errorArgumentId = errorArgumentId;
+  }
+  
+  public char getErrorArgumentId() { 
+    return errorArgumentId;
+  }
+  
+  public void setErrorArgumentId(char errorArgumentId) { 
+    this.errorArgumentId = errorArgumentId;
+  }
+  
+  public String getErrorParameter() { 
+    return errorParameter;
+  }
+  
+  public void setErrorParameter(String errorParameter) { 
+    this.errorParameter = errorParameter;
+  }
+  
+  public ErrorCode getErrorCode() { 
+    return errorCode;
+  }
+  
+  public void setErrorCode(ErrorCode errorCode) { 
+    this.errorCode = errorCode;
+  }
+  
+  public String errorMessage() { 
+    switch (errorCode) {
+      case OK:
+        return "TILT: Should not get here.";
+      case UNEXPECTED_ARGUMENT:
+        return String.format("Argument -%c unexpected.", errorArgumentId);
+      case MISSING_STRING:
+        return String.format("Could not find string parameter for -%c.", errorArgumentId);
+      case INVALID_INTEGER:
+        return String.format("Argument -%c expects an integer but was '%s'.", errorArgumentId, errorParameter);
+      case MISSING_INTEGER:
+        return String.format("Could not find integer parameter for -%c.", errorArgumentId);
+      case INVALID_DOUBLE:
+        return String.format("Argument -%c expects a double but was '%s'.", errorArgumentId, errorParameter);
+      case MISSING_DOUBLE:
+        return String.format("Could not find double parameter for -%c.", errorArgumentId); 
+      case INVALID_ARGUMENT_NAME:
+        return String.format("'%c' is not a valid argument name.", errorArgumentId);
+      case INVALID_ARGUMENT_FORMAT:
+        return String.format("'%s' is not a valid argument format.", errorParameter);
+    }
+    return ""; 
+  }
+  
+  public enum ErrorCode {
+    OK, INVALID_ARGUMENT_FORMAT, UNEXPECTED_ARGUMENT, INVALID_ARGUMENT_NAME, 
+    MISSING_STRING, MISSING_INTEGER, INVALID_INTEGER, MISSING_DOUBLE, INVALID_DOUBLE
+  }
+}
+```
+
+자바 언어의 특성상 코드가 많이 들어가지만 명명 방식, 함수 크기, 코드 형식 등 전반적으로 깔끔한 구조에 잘 짜여진 프로그램이다.
